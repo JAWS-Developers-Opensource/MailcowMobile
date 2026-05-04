@@ -71,6 +71,6 @@ export default function TabLayout() {
 
 
 
-function TabIcon({ label, color }: { label: string; color: string }) {
+function TabIcon({ label, color: _color }: { label: string; color: string }) {
   return <Text style={{ fontSize: 20 }}>{label}</Text>;
 }
