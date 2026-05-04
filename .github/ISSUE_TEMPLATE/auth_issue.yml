@@ -1,0 +1,100 @@
+name: 🔐 Authentication / Login Issue
+description: Report a problem with IMAP login, OAuth2 / SSO, MFA, or credential storage
+title: "[Auth]: "
+labels: ["authentication", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues related to logging in, OAuth2 setup, MFA/TOTP, or saved credentials.
+        **Do not include your actual passwords or tokens in this report.**
+
+  - type: dropdown
+    id: auth_area
+    attributes:
+      label: Authentication Sub-area
+      options:
+        - IMAP login (password)
+        - IMAP login (MFA / TOTP)
+        - OAuth2 / SSO setup
+        - OAuth2 token refresh
+        - Auto-login on startup
+        - Logout / credential removal
+        - Credential storage (SecureStore)
+        - Biometric authentication
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android (phone)
+        - Android (tablet)
+        - iOS (iPhone)
+        - iOS (iPad)
+        - Expo Go (development)
+    validations:
+      required: true
+
+  - type: input
+    id: mailcow_version
+    attributes:
+      label: Mailcow Version
+      description: Found in the Mailcow admin panel under Configuration → Update.
+      placeholder: "e.g. 2024-01"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: mfa_enabled
+    attributes:
+      label: Is MFA / TOTP enabled on the account?
+      options:
+        - "Yes"
+        - "No"
+        - "Unknown"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Issue
+      placeholder: "After entering my credentials and tapping Login, I see a loading spinner that never finishes …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Message / Console Output
+      description: Do NOT paste credentials. Paste only error codes or stack traces.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional Context
