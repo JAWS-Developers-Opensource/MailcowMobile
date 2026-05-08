@@ -67,6 +67,14 @@ export class ImapService {
 
   // ─── Public API ─────────────────────────────────────────────────────────────
 
+  /** Verify IMAP credentials by opening an authenticated session. */
+  async verifyCredentials(password: string): Promise<void> {
+    await this.withConnection(password, async (client) => {
+      // Run a lightweight command after LOGIN to ensure session is usable.
+      await client.capability();
+    });
+  }
+
   /** Fetch the list of IMAP folders/mailboxes. */
   async getFolders(password: string): Promise<EmailFolder[]> {
     return this.withConnection(password, async (client) => {

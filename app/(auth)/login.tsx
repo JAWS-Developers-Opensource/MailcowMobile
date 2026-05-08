@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { useAuthStore } from '../../store/authStore';
 import { savePassword, saveAccount, saveActiveAccountId } from '../../utils/secureStorage';
+import { ImapService } from '../../services/imap';
 import type { MailcowAccount } from '../../types';
 
 export default function LoginScreen() {
@@ -54,6 +55,23 @@ export default function LoginScreen() {
     setIsServerHostManuallyEdited(true);
   };
 
+  const normalizeServerHost = (host: string): string =>
+    host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
+  const loginErrorMessage = (err: unknown): string => {
+    const message = err instanceof Error ? err.message : 'Login failed';
+    if (message.includes('IMAP requires a custom Expo dev client')) {
+      return message;
+    }
+    if (message.includes('IMAP command failed')) {
+      return 'Invalid IMAP credentials. Check email/password and IMAP settings.';
+    }
+    if (message.toLowerCase().includes('timed out')) {
+      return 'Connection timeout. Check server hostname, port, and network.';
+    }
+    return message;
+  };
+
   /** Update TLS defaults when the user changes ports. */
   const handleImapPortChange = (p: string) => {
     setImapPort(p);
@@ -74,22 +92,27 @@ export default function LoginScreen() {
     setStatus('loading');
 
     try {
+      const normalizedHost = normalizeServerHost(serverHost);
       const accountId = `account-${Date.now()}`;
       const account: MailcowAccount = {
         id: accountId,
         label: emailAddress,
         emailAddress: emailAddress.trim(),
-        imapHost: serverHost.trim(),
+        imapHost: normalizedHost,
         imapPort: parseInt(imapPort, 10) || 993,
         imapTls,
-        smtpHost: serverHost.trim(),
+        smtpHost: normalizedHost,
         smtpPort: parseInt(smtpPort, 10) || 587,
         smtpTls,
-        davBaseUrl: `https://${serverHost.trim()}/SOGo/dav/${encodeURIComponent(emailAddress.trim())}`,
+        davBaseUrl: `https://${normalizedHost}/SOGo/dav/${encodeURIComponent(emailAddress.trim())}`,
         username: emailAddress.trim(),
         passwordStored: true,
         useOAuth2: false,
       };
+
+      // Validate credentials before persisting account/login state.
+      const imap = new ImapService(account);
+      await imap.verifyCredentials(password.trim());
 
       // Persist account JSON and password in SecureStore for auto-login on next launch
       await savePassword(accountId, password.trim());
@@ -100,10 +123,11 @@ export default function LoginScreen() {
       setAccount(account, password.trim());
       router.replace('/(tabs)');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const message = loginErrorMessage(err);
+      setError(message);
       Alert.alert(
         'Login Failed',
-        'Could not save credentials. Please check your input and try again.',
+        message,
       );
     }
   }
