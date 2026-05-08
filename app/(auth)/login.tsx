@@ -25,13 +25,18 @@ const normalizeServerHost = (host: string): string =>
 
 const loginErrorMessage = (err: unknown): string => {
   const message = err instanceof Error ? err.message : 'Login failed';
-  if (message.includes('IMAP requires a custom Expo dev client')) {
+  const lower = message.toLowerCase();
+  if (lower.includes('imap requires a custom expo dev client')) {
     return message;
   }
-  if (message.includes('IMAP command failed')) {
+  if (
+    lower.includes('authentication failed') ||
+    lower.includes('invalid credentials') ||
+    lower.includes('login failed')
+  ) {
     return 'Invalid IMAP credentials. Check email/password and IMAP settings.';
   }
-  if (message.toLowerCase().includes('timed out')) {
+  if (lower.includes('timed out')) {
     return 'Connection timeout. Check server hostname, port, and network.';
   }
   return message;
