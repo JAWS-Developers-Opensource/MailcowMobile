@@ -17,30 +17,9 @@ import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { useAuthStore } from '../../store/authStore';
 import { savePassword, saveAccount, saveActiveAccountId } from '../../utils/secureStorage';
+import { normalizeServerHost, loginErrorMessage } from '../../utils/loginValidation';
 import { ImapService } from '../../services/imap';
 import type { MailcowAccount } from '../../types';
-
-const normalizeServerHost = (host: string): string =>
-  host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-
-const loginErrorMessage = (err: unknown): string => {
-  const message = err instanceof Error ? err.message : 'Login failed';
-  const lower = message.toLowerCase();
-  if (lower.includes('imap requires a custom expo dev client')) {
-    return message;
-  }
-  if (
-    lower.includes('authentication failed') ||
-    lower.includes('invalid credentials') ||
-    lower.includes('login failed')
-  ) {
-    return 'Invalid IMAP credentials. Check email/password and IMAP settings.';
-  }
-  if (lower.includes('timed out')) {
-    return 'Connection timeout. Check server hostname, port, and network.';
-  }
-  return message;
-};
 
 export default function LoginScreen() {
   const scheme = useColorScheme();
