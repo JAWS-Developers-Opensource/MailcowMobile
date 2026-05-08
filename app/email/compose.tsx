@@ -21,7 +21,7 @@ export default function ComposeScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
   const params = useLocalSearchParams<{
     replyTo?: string;
     subject?: string;
@@ -59,7 +59,7 @@ export default function ComposeScreen() {
   }
 
   async function doSend(toAddresses: string[]) {
-    if (!smtp) {
+    if (!smtp || !password) {
       Alert.alert('Error', 'Not logged in.');
       return;
     }
@@ -73,7 +73,7 @@ export default function ComposeScreen() {
         bodyText: body,
         replyToId: params.replyToId,
         forwardId: params.forwardId,
-      });
+      }, password);
       router.dismiss();
     } catch (err) {
       Alert.alert('Send Failed', err instanceof Error ? err.message : 'Could not send email.');

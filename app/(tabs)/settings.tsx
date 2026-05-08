@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { useAuthStore } from '../../store/authStore';
+import { deletePassword, deleteAccount, clearActiveAccountId } from '../../utils/secureStorage';
 
 export default function SettingsScreen() {
   const scheme = useColorScheme();
@@ -32,7 +33,13 @@ export default function SettingsScreen() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // Clear persisted credentials from SecureStore
+            if (account) {
+              await deletePassword(account.id);
+              await deleteAccount(account.id);
+              await clearActiveAccountId();
+            }
             logout();
             router.replace('/(auth)/login');
           },

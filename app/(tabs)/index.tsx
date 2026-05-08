@@ -23,7 +23,7 @@ export default function MailScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
   const {
     folders,
     emails,
@@ -42,27 +42,27 @@ export default function MailScreen() {
   const imap = useMemo(() => account ? new ImapService(account) : null, [account]);
 
   const loadFolders = useCallback(async () => {
-    if (!imap) return;
+    if (!imap || !password) return;
     try {
-      const data = await imap.getFolders();
+      const data = await imap.getFolders(password);
       setFolders(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load folders');
     }
-  }, [imap, setFolders, setError]);
+  }, [imap, password, setFolders, setError]);
 
   const loadEmails = useCallback(async () => {
-    if (!imap) return;
+    if (!imap || !password) return;
     setLoading(true);
     try {
-      const data = await imap.getEmails(selectedFolder);
+      const data = await imap.getEmails(selectedFolder, password);
       setEmails(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load emails');
     } finally {
       setLoading(false);
     }
-  }, [imap, selectedFolder, setEmails, setLoading, setError]);
+  }, [imap, password, selectedFolder, setEmails, setLoading, setError]);
 
   useEffect(() => {
     loadFolders();

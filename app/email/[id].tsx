@@ -20,7 +20,7 @@ export default function EmailDetailScreen() {
 
   const { id } = useLocalSearchParams<{ id: string }>();
   const { emails, markAsRead, markAsFlagged, removeEmail } = useEmailStore();
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
 
   const email = emails.find((e) => e.id === id);
   const imap = account ? new ImapService(account) : null;
@@ -28,7 +28,9 @@ export default function EmailDetailScreen() {
   useEffect(() => {
     if (email && !email.isRead) {
       markAsRead(email.id);
-      imap?.setReadFlag(email.folder, email.uid, true).catch(() => {});
+      if (imap && password) {
+        imap.setReadFlag(email.folder, email.uid, true, password).catch(() => {});
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -73,7 +75,9 @@ export default function EmailDetailScreen() {
         style: 'destructive',
         onPress: () => {
           removeEmail(email!.id);
-          imap?.deleteEmail(email!.folder, email!.uid).catch(() => {});
+          if (imap && password) {
+            imap.deleteEmail(email!.folder, email!.uid, password).catch(() => {});
+          }
           router.back();
         },
       },

@@ -16,6 +16,7 @@ import {
 import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { useAuthStore } from '../../store/authStore';
+import { savePassword, saveAccount, saveActiveAccountId } from '../../utils/secureStorage';
 import type { MailcowAccount } from '../../types';
 
 export default function LoginScreen() {
@@ -31,6 +32,8 @@ export default function LoginScreen() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [imapPort, setImapPort] = useState('993');
   const [smtpPort, setSmtpPort] = useState('587');
+  const [imapTls, setImapTls] = useState(true);
+  const [smtpTls, setSmtpTls] = useState(true);
 
   const isLoading = status === 'loading';
 
@@ -51,6 +54,17 @@ export default function LoginScreen() {
     setIsServerHostManuallyEdited(true);
   };
 
+  /** Update TLS defaults when the user changes ports. */
+  const handleImapPortChange = (p: string) => {
+    setImapPort(p);
+    setImapTls(p === '993');
+  };
+
+  const handleSmtpPortChange = (p: string) => {
+    setSmtpPort(p);
+    setSmtpTls(p === '465');
+  };
+
   async function handleLogin() {
     if (!emailAddress.trim() || !password.trim() || !serverHost.trim()) {
       Alert.alert('Missing Fields', 'Please fill in all required fields.');
@@ -60,30 +74,37 @@ export default function LoginScreen() {
     setStatus('loading');
 
     try {
-      // Build the account object
+      const accountId = `account-${Date.now()}`;
       const account: MailcowAccount = {
-        id: `account-${Date.now()}`,
+        id: accountId,
         label: emailAddress,
         emailAddress: emailAddress.trim(),
         imapHost: serverHost.trim(),
         imapPort: parseInt(imapPort, 10) || 993,
-        imapTls: true,
+        imapTls,
         smtpHost: serverHost.trim(),
         smtpPort: parseInt(smtpPort, 10) || 587,
-        smtpTls: true,
+        smtpTls,
         davBaseUrl: `https://${serverHost.trim()}/SOGo/dav/${encodeURIComponent(emailAddress.trim())}`,
         username: emailAddress.trim(),
         passwordStored: true,
         useOAuth2: false,
       };
 
-      // TODO: verify credentials with an actual IMAP ping or API call
-      // For now, accept any non-empty credentials
-      setAccount(account);
+      // Persist account JSON and password in SecureStore for auto-login on next launch
+      await savePassword(accountId, password.trim());
+      await saveAccount(accountId, JSON.stringify(account));
+      await saveActiveAccountId(accountId);
+
+      // Store account + in-memory password
+      setAccount(account, password.trim());
       router.replace('/(tabs)');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
-      Alert.alert('Login Failed', 'Could not connect to the server. Please check your credentials and server address.');
+      Alert.alert(
+        'Login Failed',
+        'Could not save credentials. Please check your input and try again.',
+      );
     }
   }
 
@@ -102,7 +123,7 @@ export default function LoginScreen() {
           <Image source={require('../../assets/logo.png')} style={styles.logo} />
           <Text style={[styles.title, { color: colors.text }]}>MailcowMobile</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Connect to your Mailcow server
+            Connect directly to your Mailcow server
           </Text>
         </View>
 
@@ -182,7 +203,7 @@ export default function LoginScreen() {
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
             >
-              <Label text="IMAP Port" colors={colors} />
+              <Label text="IMAP Port (993 = TLS, 143 = STARTTLS)" colors={colors} />
               <TextInput
                 style={[
                   styles.input,
@@ -193,13 +214,13 @@ export default function LoginScreen() {
                   },
                 ]}
                 value={imapPort}
-                onChangeText={setImapPort}
+                onChangeText={handleImapPortChange}
                 keyboardType="number-pad"
                 placeholder="993"
                 placeholderTextColor={colors.textSecondary}
               />
 
-              <Label text="SMTP Port" colors={colors} />
+              <Label text="SMTP Port (465 = TLS, 587 = STARTTLS)" colors={colors} />
               <TextInput
                 style={[
                   styles.input,
@@ -210,7 +231,7 @@ export default function LoginScreen() {
                   },
                 ]}
                 value={smtpPort}
-                onChangeText={setSmtpPort}
+                onChangeText={handleSmtpPortChange}
                 keyboardType="number-pad"
                 placeholder="587"
                 placeholderTextColor={colors.textSecondary}
@@ -234,8 +255,10 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
+            MailcowMobile connects directly to your Mailcow server.{'\n'}
+            IMAP · SMTP · CalDAV · CardDAV — no backend proxy required.{'\n\n'}
             MailcowMobile is an unofficial open-source client.{'\n'}
-            JAWS Developers is neither affiliated nor partnered with Mailcow.
+            Not affiliated with the Mailcow project.
           </Text>
         </View>
       </ScrollView>
@@ -266,7 +289,7 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 40 },
   logo: { width: 100, height: 100, marginBottom: 12 },
   title: { fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  subtitle: { fontSize: 15 },
+  subtitle: { fontSize: 15, textAlign: 'center' },
   form: {},
   label: { fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 14 },
   input: {

@@ -27,7 +27,7 @@ export default function CalendarScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
   const {
     events,
     selectedDate,
@@ -49,19 +49,19 @@ export default function CalendarScreen() {
   const [newEnd, setNewEnd] = useState('');
 
   const loadData = useCallback(async () => {
-    if (!caldav) return;
+    if (!caldav || !password) return;
     setLoading(true);
     try {
-      const cals = await caldav.getCalendars('');
+      const cals = await caldav.getCalendars(password);
       setCalendars(cals);
-      const evts = await caldav.getEvents(cals[0]?.url ?? '', '', '', '');
+      const evts = await caldav.getEvents(cals[0]?.url ?? '', '', '', password);
       setEvents(evts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load calendar');
     } finally {
       setLoading(false);
     }
-  }, [caldav, setCalendars, setEvents, setLoading, setError]);
+  }, [caldav, password, setCalendars, setEvents, setLoading, setError]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -83,7 +83,7 @@ export default function CalendarScreen() {
   const selectedEvents = events.filter((e) => e.start.startsWith(selectedDate));
 
   async function handleCreateEvent() {
-    if (!caldav || !newTitle.trim()) {
+    if (!caldav || !password || !newTitle.trim()) {
       Alert.alert('Error', 'Please enter an event title.');
       return;
     }
@@ -96,7 +96,7 @@ export default function CalendarScreen() {
         end: newEnd || new Date(now.getTime() + 3600000).toISOString(),
         allDay: false,
         color: colors.primary,
-      }, '');
+      }, password);
       addEvent(event);
       setShowNewEvent(false);
       setNewTitle('');

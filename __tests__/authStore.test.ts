@@ -20,28 +20,31 @@ const mockAccount: MailcowAccount = {
 describe('authStore', () => {
   beforeEach(() => {
     // Reset store state
-    useAuthStore.setState({ account: null, status: 'idle', error: null });
+    useAuthStore.setState({ account: null, password: null, status: 'idle', error: null });
   });
 
   it('starts in idle state', () => {
-    const { status, account } = useAuthStore.getState();
+    const { status, account, password } = useAuthStore.getState();
     expect(status).toBe('idle');
     expect(account).toBeNull();
+    expect(password).toBeNull();
   });
 
   it('sets account and transitions to authenticated', () => {
-    useAuthStore.getState().setAccount(mockAccount);
-    const { status, account } = useAuthStore.getState();
+    useAuthStore.getState().setAccount(mockAccount, 'secret123');
+    const { status, account, password } = useAuthStore.getState();
     expect(status).toBe('authenticated');
     expect(account?.emailAddress).toBe('user@example.com');
+    expect(password).toBe('secret123');
   });
 
   it('logs out and resets state', () => {
-    useAuthStore.getState().setAccount(mockAccount);
+    useAuthStore.getState().setAccount(mockAccount, 'secret123');
     useAuthStore.getState().logout();
-    const { status, account } = useAuthStore.getState();
+    const { status, account, password } = useAuthStore.getState();
     expect(status).toBe('idle');
     expect(account).toBeNull();
+    expect(password).toBeNull();
   });
 
   it('sets error state', () => {

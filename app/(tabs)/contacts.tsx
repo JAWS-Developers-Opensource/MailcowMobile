@@ -23,7 +23,7 @@ export default function ContactsScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
   const {
     contacts,
     searchQuery,
@@ -47,19 +47,19 @@ export default function ContactsScreen() {
   const [newOrg, setNewOrg] = useState('');
 
   const loadData = useCallback(async () => {
-    if (!carddav) return;
+    if (!carddav || !password) return;
     setLoading(true);
     try {
-      const books = await carddav.getAddressBooks('');
+      const books = await carddav.getAddressBooks(password);
       setAddressBooks(books);
-      const contactData = await carddav.getContacts(books[0]?.url ?? '', '');
+      const contactData = await carddav.getContacts(books[0]?.url ?? '', password);
       setContacts(contactData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load contacts');
     } finally {
       setLoading(false);
     }
-  }, [carddav, setAddressBooks, setContacts, setLoading, setError]);
+  }, [carddav, password, setAddressBooks, setContacts, setLoading, setError]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -79,7 +79,7 @@ export default function ContactsScreen() {
   );
 
   async function handleCreateContact() {
-    if (!carddav || (!newFirstName.trim() && !newLastName.trim())) {
+    if (!carddav || !password || (!newFirstName.trim() && !newLastName.trim())) {
       Alert.alert('Error', 'Please enter at least a first or last name.');
       return;
     }
@@ -93,7 +93,7 @@ export default function ContactsScreen() {
         emails: newEmail ? [{ type: 'work', address: newEmail }] : [],
         phones: newPhone ? [{ type: 'work', number: newPhone }] : [],
         organization: newOrg || undefined,
-      }, '');
+      }, password);
       addContact(contact);
       setShowNewContact(false);
       setNewFirstName('');

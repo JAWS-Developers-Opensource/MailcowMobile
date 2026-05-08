@@ -22,7 +22,7 @@ export default function TasksScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const { account } = useAuthStore();
+  const { account, password } = useAuthStore();
   const {
     tasks,
     isLoading,
@@ -43,19 +43,19 @@ export default function TasksScreen() {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('active');
 
   const loadData = useCallback(async () => {
-    if (!caldav) return;
+    if (!caldav || !password) return;
     setLoading(true);
     try {
-      const lists = await caldav.getTaskLists('');
+      const lists = await caldav.getTaskLists(password);
       setTaskLists(lists);
-      const taskData = await caldav.getTasks(lists[0]?.url ?? '', '');
+      const taskData = await caldav.getTasks(lists[0]?.url ?? '', password);
       setTasks(taskData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setLoading(false);
     }
-  }, [caldav, setTaskLists, setTasks, setLoading, setError]);
+  }, [caldav, password, setTaskLists, setTasks, setLoading, setError]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -66,7 +66,9 @@ export default function TasksScreen() {
       completedAt: task.status === 'completed' ? undefined : new Date().toISOString(),
     };
     updateTask(updated);
-    // TODO: sync to CalDAV
+    if (caldav && password) {
+      caldav.updateTask('', updated, password).catch(() => {});
+    }
   };
 
   const handlePress = (task: Task) => {
@@ -74,7 +76,7 @@ export default function TasksScreen() {
   };
 
   async function handleCreateTask() {
-    if (!caldav || !newTitle.trim()) {
+    if (!caldav || !password || !newTitle.trim()) {
       Alert.alert('Error', 'Please enter a task title.');
       return;
     }
@@ -85,7 +87,7 @@ export default function TasksScreen() {
         dueDate: newDueDate || undefined,
         priority: newPriority,
         status: 'needs-action',
-      }, '');
+      }, password);
       addTask(task);
       setShowNewTask(false);
       setNewTitle('');
