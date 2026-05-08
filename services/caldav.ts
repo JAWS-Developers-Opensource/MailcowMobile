@@ -517,7 +517,7 @@ export class CalDavService {
       description: task.description,
       due: task.dueDate,
       priority: appPriorityToIcal(task.priority),
-      status: task.status.toUpperCase().replace('-', '-') as 'NEEDS-ACTION' | 'IN-PROCESS' | 'COMPLETED' | 'CANCELLED',
+      status: task.status.toUpperCase() as 'NEEDS-ACTION' | 'IN-PROCESS' | 'COMPLETED' | 'CANCELLED',
     });
 
     const resourceUrl = `${listUrl.replace(/\/$/, '')}/${uid}.ics`;

@@ -66,7 +66,11 @@ function parseIcalDate(value: string): { iso: string; allDay: boolean } {
   return { iso: value, allDay: false };
 }
 
-/** Format an ISO 8601 string back into iCal DATE-TIME format. */
+/** Format an ISO 8601 string back into iCal DATE or DATE-TIME format.
+ *
+ * @param iso  For `allDay=true` expects YYYY-MM-DD; for `allDay=false` expects
+ *             a full ISO 8601 date-time string understood by `new Date()`.
+ */
 function toIcalDateTime(iso: string, allDay = false): string {
   if (allDay) {
     // DATE format: YYYYMMDD
