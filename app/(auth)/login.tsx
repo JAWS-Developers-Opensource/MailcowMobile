@@ -20,6 +20,23 @@ import { savePassword, saveAccount, saveActiveAccountId } from '../../utils/secu
 import { ImapService } from '../../services/imap';
 import type { MailcowAccount } from '../../types';
 
+const normalizeServerHost = (host: string): string =>
+  host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
+const loginErrorMessage = (err: unknown): string => {
+  const message = err instanceof Error ? err.message : 'Login failed';
+  if (message.includes('IMAP requires a custom Expo dev client')) {
+    return message;
+  }
+  if (message.includes('IMAP command failed')) {
+    return 'Invalid IMAP credentials. Check email/password and IMAP settings.';
+  }
+  if (message.toLowerCase().includes('timed out')) {
+    return 'Connection timeout. Check server hostname, port, and network.';
+  }
+  return message;
+};
+
 export default function LoginScreen() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
@@ -53,23 +70,6 @@ export default function LoginScreen() {
   const handleServerHostChange = (host: string) => {
     setServerHost(host);
     setIsServerHostManuallyEdited(true);
-  };
-
-  const normalizeServerHost = (host: string): string =>
-    host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
-
-  const loginErrorMessage = (err: unknown): string => {
-    const message = err instanceof Error ? err.message : 'Login failed';
-    if (message.includes('IMAP requires a custom Expo dev client')) {
-      return message;
-    }
-    if (message.includes('IMAP command failed')) {
-      return 'Invalid IMAP credentials. Check email/password and IMAP settings.';
-    }
-    if (message.toLowerCase().includes('timed out')) {
-      return 'Connection timeout. Check server hostname, port, and network.';
-    }
-    return message;
   };
 
   /** Update TLS defaults when the user changes ports. */
