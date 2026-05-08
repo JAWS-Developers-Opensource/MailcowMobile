@@ -3,25 +3,20 @@
   "slug": "mailcow-mobile",
   "version": "0.0.1",
   "orientation": "portrait",
-  "icon": "./assets/images/icon.png",
+  "icon": "./assets/logo.png",
   "scheme": "mailcowmobile",
   "userInterfaceStyle": "automatic",
   "newArchEnabled": true,
   "ios": {
     "supportsTablet": true,
-    "bundleIdentifier": "org.jaws.mailcowmobile"
+    "bundleIdentifier": "com.jawsdevelopers.mailcowmobile"
   },
   "android": {
     "adaptiveIcon": {
-      "foregroundImage": "./assets/images/adaptive-icon.png",
+      "foregroundImage": "./assets/logo.png",
       "backgroundColor": "#0D1B2A"
     },
-    "package": "org.jaws.mailcowmobile"
-  },
-  "web": {
-    "bundler": "metro",
-    "output": "static",
-    "favicon": "./assets/images/favicon.png"
+    "package": "com.jawsdevelopers.mailcowmobile"
   },
   "plugins": [
     "expo-router",
@@ -29,7 +24,7 @@
     [
       "expo-notifications",
       {
-        "icon": "./assets/images/notification-icon.png",
+        "icon": "./assets/logo.png",
         "color": "#2563EB"
       }
     ]

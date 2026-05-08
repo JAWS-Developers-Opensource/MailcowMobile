@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '../../constants/Colors';
@@ -26,11 +27,29 @@ export default function LoginScreen() {
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [serverHost, setServerHost] = useState('');
+  const [isServerHostManuallyEdited, setIsServerHostManuallyEdited] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [imapPort, setImapPort] = useState('993');
   const [smtpPort, setSmtpPort] = useState('587');
 
   const isLoading = status === 'loading';
+
+  const handleEmailChange = (email: string) => {
+    setEmailAddress(email);
+
+    // Auto-populate server host if not manually edited
+    if (!isServerHostManuallyEdited && email.includes('@')) {
+      const domain = email.split('@')[1];
+      if (domain) {
+        setServerHost(`mail.${domain}`);
+      }
+    }
+  };
+
+  const handleServerHostChange = (host: string) => {
+    setServerHost(host);
+    setIsServerHostManuallyEdited(true);
+  };
 
   async function handleLogin() {
     if (!emailAddress.trim() || !password.trim() || !serverHost.trim()) {
@@ -80,7 +99,7 @@ export default function LoginScreen() {
       >
         {/* Logo / Title */}
         <View style={styles.header}>
-          <Text style={[styles.logo, { color: colors.primary }]}>✉️</Text>
+          <Image source={require('../../assets/logo.png')} style={styles.logo} />
           <Text style={[styles.title, { color: colors.text }]}>MailcowMobile</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Connect to your Mailcow server
@@ -100,7 +119,7 @@ export default function LoginScreen() {
               },
             ]}
             value={emailAddress}
-            onChangeText={setEmailAddress}
+            onChangeText={handleEmailChange}
             placeholder="you@mail.example.com"
             placeholderTextColor={colors.textSecondary}
             keyboardType="email-address"
@@ -120,7 +139,7 @@ export default function LoginScreen() {
               },
             ]}
             value={serverHost}
-            onChangeText={setServerHost}
+            onChangeText={handleServerHostChange}
             placeholder="mail.example.com"
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
@@ -245,7 +264,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingTop: 60 },
   header: { alignItems: 'center', marginBottom: 40 },
-  logo: { fontSize: 56, marginBottom: 12 },
+  logo: { width: 100, height: 100, marginBottom: 12 },
   title: { fontSize: 28, fontWeight: '700', marginBottom: 6 },
   subtitle: { fontSize: 15 },
   form: {},
