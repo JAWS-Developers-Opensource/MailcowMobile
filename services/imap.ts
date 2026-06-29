@@ -36,6 +36,15 @@ export class ImapService {
     this.account = account;
   }
 
+  private logDebug(step: string, details?: Record<string, unknown>): void {
+    const prefix = `[IMAP:${this.account.emailAddress}] ${step}`;
+    if (details) {
+      console.log(prefix, details);
+      return;
+    }
+    console.log(prefix);
+  }
+
   /** Open a short-lived authenticated IMAP connection, run a callback, then close. */
   private async withConnection<T>(
     password: string,
@@ -43,25 +52,50 @@ export class ImapService {
   ): Promise<T> {
     if (!isTcpAvailable()) throw new Error(TCP_UNAVAILABLE);
 
+    const startedAt = Date.now();
+    this.logDebug('withConnection:start', {
+      host: this.account.imapHost,
+      port: this.account.imapPort,
+      tls: this.account.imapTls,
+    });
+
     const client = new ImapClient();
     await client.connect({
       host: this.account.imapHost,
       port: this.account.imapPort,
       tls: this.account.imapTls,
     });
+    this.logDebug('connect:ok', { elapsedMs: Date.now() - startedAt });
 
     try {
       // STARTTLS on plain port 143
       if (!this.account.imapTls && this.account.imapPort !== 993) {
+        this.logDebug('capability:before-starttls');
         const caps = await client.capability();
+        this.logDebug('capability:after-starttls-check', { capabilities: caps });
         if (caps.some((c) => c === 'STARTTLS')) {
+          this.logDebug('starttls:begin');
           await client.startTls();
+          this.logDebug('starttls:ok');
         }
       }
+
+      this.logDebug('login:begin', { username: this.account.username });
       await client.login(this.account.username, password);
-      return await fn(client);
+      this.logDebug('login:ok');
+      const result = await fn(client);
+      this.logDebug('withConnection:operation:ok', { elapsedMs: Date.now() - startedAt });
+      return result;
+    } catch (error) {
+      this.logDebug('withConnection:error', {
+        elapsedMs: Date.now() - startedAt,
+        error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error,
+      });
+      throw error;
     } finally {
+      this.logDebug('disconnect:begin');
       await client.disconnect();
+      this.logDebug('disconnect:done', { totalElapsedMs: Date.now() - startedAt });
     }
   }
 
@@ -69,10 +103,14 @@ export class ImapService {
 
   /** Verify IMAP credentials by opening an authenticated session. */
   async verifyCredentials(password: string): Promise<void> {
+    this.logDebug('verifyCredentials:start');
     await this.withConnection(password, async (client) => {
       // Run a lightweight command after LOGIN to ensure session is usable.
+      this.logDebug('verifyCredentials:capability:begin');
       await client.capability();
+      this.logDebug('verifyCredentials:capability:ok');
     });
+    this.logDebug('verifyCredentials:ok');
   }
 
   /** Fetch the list of IMAP folders/mailboxes. */

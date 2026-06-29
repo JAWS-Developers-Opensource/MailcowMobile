@@ -41,13 +41,97 @@ export class ImapClient {
   private pendingCommands: PendingCommand[] = [];
   private unsolicitedHandlers: Array<(line: string) => void> = [];
   private connected = false;
+  private textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8') : null;
+
+  private debugLog(step: string, details?: Record<string, unknown>): void {
+    const prefix = `[ImapClient] ${step}`;
+    if (details) {
+      console.log(prefix, details);
+      return;
+    }
+    console.log(prefix);
+  }
+
+  private decodeSocketData(data: unknown): string {
+    if (typeof data === 'string') return data;
+
+    // react-native-tcp-socket may deliver Uint8Array/ArrayBuffer-like payloads.
+    if (typeof ArrayBuffer !== 'undefined') {
+      if (data instanceof ArrayBuffer) {
+        const bytes = new Uint8Array(data);
+        return this.textDecoder
+          ? this.textDecoder.decode(bytes)
+          : String.fromCharCode(...bytes);
+      }
+
+      if (ArrayBuffer.isView(data)) {
+        const view = data as ArrayBufferView;
+        const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+        return this.textDecoder
+          ? this.textDecoder.decode(bytes)
+          : String.fromCharCode(...bytes);
+      }
+    }
+
+    // Fallback for Buffer-like objects exposing toString('utf8').
+    if (data && typeof (data as { toString?: unknown }).toString === 'function') {
+      try {
+        const utf8 = (data as { toString: (enc?: string) => string }).toString('utf8');
+        if (utf8 && utf8 !== '[object Object]') return utf8;
+      } catch {
+        // ignore and try generic toString below
+      }
+      const generic = String(data);
+      if (generic !== '[object Object]') return generic;
+    }
+
+    return '';
+  }
 
   // ─── Connection ────────────────────────────────────────────────────────────
 
   connect(options: ImapConnectOptions): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
+
+      const finishResolve = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.unsolicitedHandlers = this.unsolicitedHandlers.filter((h) => h !== greetingHandler);
+        resolve();
+      };
+
+      const finishReject = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        this.unsolicitedHandlers = this.unsolicitedHandlers.filter((h) => h !== greetingHandler);
+        reject(err);
+      };
+
+      const greetingHandler = (line: string) => {
+        if (line.startsWith('* OK') || line.startsWith('* PREAUTH')) {
+          this.debugLog('greeting:accepted', { line });
+          finishResolve();
+        } else if (line.startsWith('* BYE')) {
+          this.debugLog('greeting:rejected', { line });
+          finishReject(new Error(`Server rejected connection: ${line}`));
+        }
+      };
+
+      // Register greeting handler before opening the socket to avoid missing
+      // early server greeting lines on fast connections.
+      this.unsolicitedHandlers.push(greetingHandler);
+
+      this.debugLog('connect:start', {
+        host: options.host,
+        port: options.port,
+        tls: options.tls,
+      });
       const timeout = setTimeout(() => {
-        reject(new Error('IMAP connection timed out'));
+        this.debugLog('connect:timeout');
+        finishReject(new Error('IMAP connection timed out waiting for server greeting'));
       }, 15000);
 
       this.socket = TcpSocket.createConnection(
@@ -58,32 +142,32 @@ export class ImapClient {
           tlsCheckValidity: false, // allow self-signed certs for home servers
         },
         () => {
-          clearTimeout(timeout);
           this.connected = true;
-          // Wait for the server greeting (* OK ...)
-          const greetingHandler = (line: string) => {
-            if (line.startsWith('* OK') || line.startsWith('* PREAUTH')) {
-              this.unsolicitedHandlers = this.unsolicitedHandlers.filter((h) => h !== greetingHandler);
-              resolve();
-            } else if (line.startsWith('* BYE')) {
-              this.unsolicitedHandlers = this.unsolicitedHandlers.filter((h) => h !== greetingHandler);
-              reject(new Error(`Server rejected connection: ${line}`));
-            }
-          };
-          this.unsolicitedHandlers.push(greetingHandler);
+          this.debugLog('socket:connected');
         },
       );
 
-      this.socket.on('data', (data: Buffer | string) => {
-        this.onData(typeof data === 'string' ? data : data.toString('utf8'));
+      this.socket.on('data', (data: unknown) => {
+        const decoded = this.decodeSocketData(data);
+        this.debugLog('socket:data', {
+          decodedLength: decoded.length,
+          preview: decoded.slice(0, 120),
+        });
+        if (!decoded) return;
+        this.onData(decoded);
       });
 
       this.socket.on('error', (err: Error) => {
-        clearTimeout(timeout);
-        reject(err);
+        this.debugLog('socket:error', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack,
+        });
+        finishReject(err);
       });
 
       this.socket.on('close', () => {
+        this.debugLog('socket:close', { pendingCommands: this.pendingCommands.length });
         this.connected = false;
         // Reject any outstanding commands
         for (const cmd of this.pendingCommands) {
@@ -131,6 +215,7 @@ export class ImapClient {
   }
 
   private processLine(line: string): void {
+    this.debugLog('line:in', { line });
     // Check if this line is a tagged response (matches a pending command)
     for (const cmd of this.pendingCommands) {
       if (line.startsWith(`${cmd.tag} OK`) || line.startsWith(`${cmd.tag} NO`) || line.startsWith(`${cmd.tag} BAD`)) {
@@ -138,8 +223,10 @@ export class ImapClient {
         const success = line.startsWith(`${cmd.tag} OK`);
         this.pendingCommands = this.pendingCommands.filter((c) => c !== cmd);
         if (success) {
+          this.debugLog('command:success', { tag: cmd.tag, line });
           cmd.resolve(cmd.accumulated);
         } else {
+          this.debugLog('command:failure', { tag: cmd.tag, line });
           cmd.reject(new Error(`IMAP command failed: ${line}`));
         }
         return;
@@ -170,6 +257,7 @@ export class ImapClient {
         return reject(new Error('IMAP: not connected'));
       }
       const tag = this.nextTag();
+      this.debugLog('command:send', { tag, cmdText });
       const pending: PendingCommand = { tag, resolve, reject, accumulated: [] };
       this.pendingCommands.push(pending);
       this.socket.write(`${tag} ${cmdText}\r\n`);

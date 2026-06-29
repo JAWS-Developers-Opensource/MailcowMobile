@@ -22,6 +22,7 @@ import { ImapService } from '../../services/imap';
 import type { MailcowAccount } from '../../types';
 
 export default function LoginScreen() {
+  console.log('Rendering LoginScreen');
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
@@ -33,7 +34,7 @@ export default function LoginScreen() {
   const [isServerHostManuallyEdited, setIsServerHostManuallyEdited] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [imapPort, setImapPort] = useState('993');
-  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpPort, setSmtpPort] = useState('465');
   const [imapTls, setImapTls] = useState(true);
   const [smtpTls, setSmtpTls] = useState(true);
 
@@ -73,11 +74,26 @@ export default function LoginScreen() {
       return;
     }
 
+    const loginAttemptId = `login-${Date.now()}`;
+    const startedAt = Date.now();
+    console.log(`[Login:${loginAttemptId}] Start`, {
+      email: emailAddress.trim(),
+      serverHost: serverHost.trim(),
+      imapPort,
+      imapTls,
+    });
+
     setStatus('loading');
+    console.log(`[Login:${loginAttemptId}] Auth status set to loading`);
 
     try {
       const normalizedHost = normalizeServerHost(serverHost);
       const accountId = `account-${Date.now()}`;
+      console.log(`[Login:${loginAttemptId}] Host normalized`, {
+        originalHost: serverHost.trim(),
+        normalizedHost,
+      });
+
       const account: MailcowAccount = {
         id: accountId,
         label: emailAddress,
@@ -86,7 +102,7 @@ export default function LoginScreen() {
         imapPort: parseInt(imapPort, 10) || 993,
         imapTls,
         smtpHost: normalizedHost,
-        smtpPort: parseInt(smtpPort, 10) || 587,
+        smtpPort: parseInt(smtpPort, 10) || 465,
         smtpTls,
         davBaseUrl: `https://${normalizedHost}/SOGo/dav/${encodeURIComponent(emailAddress.trim())}`,
         username: emailAddress.trim(),
@@ -94,19 +110,41 @@ export default function LoginScreen() {
         useOAuth2: false,
       };
 
+      console.log(`[Login:${loginAttemptId}] Verifying IMAP credentials`, {
+        accountId,
+        username: account.username,
+        imapHost: account.imapHost,
+        imapPort: account.imapPort,
+        imapTls: account.imapTls,
+      });
+
       // Validate credentials before persisting account/login state.
       const imap = new ImapService(account);
       await imap.verifyCredentials(password.trim());
+      console.log(`[Login:${loginAttemptId}] IMAP credentials verified`, {
+        elapsedMs: Date.now() - startedAt,
+      });
 
       // Persist account JSON and password in SecureStore for auto-login on next launch
       await savePassword(accountId, password.trim());
+      console.log(`[Login:${loginAttemptId}] Password saved`);
       await saveAccount(accountId, JSON.stringify(account));
+      console.log(`[Login:${loginAttemptId}] Account saved`);
       await saveActiveAccountId(accountId);
+      console.log(`[Login:${loginAttemptId}] Active account saved`);
 
       // Store account + in-memory password
       setAccount(account, password.trim());
+      console.log(`[Login:${loginAttemptId}] Account set in store`, {
+        elapsedMs: Date.now() - startedAt,
+      });
       router.replace('/(tabs)');
+      console.log(`[Login:${loginAttemptId}] Navigation to tabs complete`);
     } catch (err) {
+      console.log(`[Login:${loginAttemptId}] Login failed`, {
+        elapsedMs: Date.now() - startedAt,
+        error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err,
+      });
       const message = loginErrorMessage(err);
       setError(message);
       Alert.alert(
@@ -241,7 +279,7 @@ export default function LoginScreen() {
                 value={smtpPort}
                 onChangeText={handleSmtpPortChange}
                 keyboardType="number-pad"
-                placeholder="587"
+                placeholder="465"
                 placeholderTextColor={colors.textSecondary}
               />
             </View>

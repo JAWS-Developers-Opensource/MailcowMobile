@@ -6,7 +6,6 @@
   "icon": "./assets/logo.png",
   "scheme": "mailcowmobile",
   "userInterfaceStyle": "automatic",
-  "newArchEnabled": true,
   "ios": {
     "supportsTablet": true,
     "bundleIdentifier": "com.jawsdevelopers.mailcowmobile"
@@ -22,7 +21,6 @@
     "expo-dev-client",
     "expo-router",
     "expo-secure-store",
-    "react-native-tcp-socket",
     [
       "expo-notifications",
       {

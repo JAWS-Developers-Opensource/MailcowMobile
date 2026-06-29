@@ -1,6 +1,19 @@
 # MailcowMobile
 
+## Stay Connected to Your Email Anywhere
+
+The **Mailcow Client** is an unofficial mobile application designed to provide users with a convenient way to access and manage their Mailcow email accounts on mobile devices. With the Mailcow Client, users can easily view their inbox, read and compose emails, manage folders, and stay connected to their email accounts while on the go. The app offers a user-friendly interface and seamless integration with Mailcow's powerful email server, allowing users to stay productive and organized no matter where they are.
+
+### Built with modern technologies
 A mobile email / calendar / tasks / contacts client for [Mailcow](https://mailcow.email) servers, built with **Expo + React Native + Expo Router + TypeScript**.
+
+---
+
+## Join the Alpha
+
+Interested in testing the app? **[Click here to join the alpha program](https://nextcloud.jawsdevelopers.ch/apps/forms/embed/jJmoZQBr92Nidz62po2zmryD)**
+
+---
 
 > ***All credit for the server backend goes to Mailcow. Without a server we couldn't have any client.***
 > ***JAWS Developers is neither affiliated nor partnered with Mailcow at this time, and the code is not considered ready for end-user use. There will be no builds until it is safe to use!***
@@ -9,14 +22,14 @@ A mobile email / calendar / tasks / contacts client for [Mailcow](https://mailco
 
 | Feature | Status |
 |---------|--------|
-| 📧 Email — read (IMAP) | 🟢 Real server connectivity |
-| 📧 Email — send (SMTP) | 🟢 Real server connectivity |
-| 📧 Folders, reply, forward, delete, drafts | 🟢 Real server connectivity |
-| 📅 Calendar (CalDAV) | 🟢 Real server connectivity |
-| ✅ Tasks (CalDAV / VTODO) | 🟢 Real server connectivity |
-| 👥 Contacts (CardDAV) | 🟢 Real server connectivity |
-| 🔐 Login / credential storage | 🟢 IMAP-validated login |
-| ⚙️ Settings | 🟡 UI complete |
+| Email — read (IMAP) | 🟢 Needs security check |
+| Email — send (SMTP) | 🟢 Needs security check |
+| Folders, reply, forward, delete, drafts | 🟢 Needs security check |
+| Calendar (CalDAV) | 🟢 Needs security check |
+| Tasks (CalDAV / VTODO) | 🟢 Needs security check |
+| Contacts (CardDAV) | 🟢 Needs security check |
+| Login / credential storage | 🟢 Needs security check |
+| Settings | 🟡 UI complete |
 
 > 🟢 = Feature is connected directly to the user's Mailcow server (no backend proxy).
 
