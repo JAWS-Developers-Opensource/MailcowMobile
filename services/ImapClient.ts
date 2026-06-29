@@ -42,6 +42,8 @@ export class ImapClient {
   private unsolicitedHandlers: Array<(line: string) => void> = [];
   private connected = false;
   private textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8') : null;
+  /** Buffers raw data chunks that arrive before the 'connect' event fires. */
+  private earlyDataBuffer = '';
 
   private debugLog(step: string, details?: Record<string, unknown>): void {
     const prefix = `[ImapClient] ${step}`;
@@ -85,6 +87,11 @@ export class ImapClient {
       if (generic !== '[object Object]') return generic;
     }
 
+    this.debugLog('decode:empty', {
+      rawType: typeof data,
+      constructor: data != null ? (data as { constructor?: { name?: string } }).constructor?.name ?? 'unknown' : 'null',
+      rawStr: String(data).slice(0, 80),
+    });
     return '';
   }
 
@@ -134,18 +141,30 @@ export class ImapClient {
         finishReject(new Error('IMAP connection timed out waiting for server greeting'));
       }, 15000);
 
-      this.socket = TcpSocket.createConnection(
-        {
-          host: options.host,
-          port: options.port,
-          tls: options.tls,
-          tlsCheckValidity: false, // allow self-signed certs for home servers
-        },
-        () => {
-          this.connected = true;
-          this.debugLog('socket:connected');
-        },
-      );
+      // Create the socket WITHOUT an inline connect callback.  All listeners —
+      // including 'connect' itself — are registered synchronously on the returned
+      // socket object before the JavaScript event loop can dispatch any event.
+      // This prevents the race condition where the server greeting arrives between
+      // createConnection() returning and the 'data' listener being attached.
+      this.socket = TcpSocket.createConnection({
+        host: options.host,
+        port: options.port,
+        tls: options.tls,
+        tlsCheckValidity: false, // allow self-signed certs for home servers
+      });
+
+      this.socket.on('connect', () => {
+        this.connected = true;
+        this.debugLog('socket:connected');
+
+        // Replay any data chunks that arrived before this event fired.
+        if (this.earlyDataBuffer) {
+          this.debugLog('socket:replay-early-data', { length: this.earlyDataBuffer.length });
+          const buffered = this.earlyDataBuffer;
+          this.earlyDataBuffer = '';
+          this.onData(buffered);
+        }
+      });
 
       this.socket.on('data', (data: unknown) => {
         const decoded = this.decodeSocketData(data);
@@ -154,6 +173,14 @@ export class ImapClient {
           preview: decoded.slice(0, 120),
         });
         if (!decoded) return;
+
+        if (!this.connected) {
+          // Connection event hasn't fired yet — buffer for replay.
+          this.debugLog('socket:data:early', { length: decoded.length });
+          this.earlyDataBuffer += decoded;
+          return;
+        }
+
         this.onData(decoded);
       });
 
