@@ -146,12 +146,15 @@ export class ImapClient {
       // socket object before the JavaScript event loop can dispatch any event.
       // This prevents the race condition where the server greeting arrives between
       // createConnection() returning and the 'data' listener being attached.
-      this.socket = TcpSocket.createConnection({
+      const connectionOptions = {
         host: options.host,
         port: options.port,
-        tls: options.tls,
         tlsCheckValidity: false, // allow self-signed certs for home servers
-      });
+      };
+
+      this.socket = options.tls
+        ? TcpSocket.connectTLS(connectionOptions)
+        : TcpSocket.createConnection(connectionOptions, () => undefined);
 
       this.socket.on('connect', () => {
         this.connected = true;
@@ -206,13 +209,29 @@ export class ImapClient {
   }
 
   /** Upgrade an unencrypted connection to TLS via STARTTLS. */
-  startTls(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.socket) return reject(new Error('Not connected'));
-      (this.socket as unknown as { upgrade: (opts: object, cb: () => void) => void }).upgrade(
-        { tlsCheckValidity: false },
-        () => resolve(),
+  async startTls(): Promise<void> {
+    if (!this.socket) throw new Error('Not connected');
+
+    // RFC 3501: STARTTLS must be accepted by the server before TLS negotiation.
+    await this.sendCommand('STARTTLS');
+
+    const upgradeFn = (this.socket as unknown as {
+      upgrade?: (opts: object, cb: () => void) => void;
+    }).upgrade;
+
+    if (typeof upgradeFn !== 'function') {
+      throw new Error(
+        'STARTTLS is not supported by this socket implementation. ' +
+        'Use IMAPS on port 993 (TLS enabled) with a hostname.',
       );
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      try {
+        upgradeFn.call(this.socket, { tlsCheckValidity: false }, () => resolve());
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   }
 
