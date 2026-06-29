@@ -21,6 +21,11 @@ import { normalizeServerHost, loginErrorMessage } from '../../utils/loginValidat
 import { ImapService } from '../../services/imap';
 import type { MailcowAccount } from '../../types';
 
+function isImapGreetingTimeout(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '');
+  return message.toLowerCase().includes('timed out waiting for server greeting');
+}
+
 export default function LoginScreen() {
   console.log('Rendering LoginScreen');
   const scheme = useColorScheme();
@@ -120,7 +125,25 @@ export default function LoginScreen() {
 
       // Validate credentials before persisting account/login state.
       const imap = new ImapService(account);
-      await imap.verifyCredentials(password.trim());
+      try {
+        await imap.verifyCredentials(password.trim());
+      } catch (err) {
+        // Some Mailcow installs expose STARTTLS on 143 while 993 can timeout
+        // (especially with local IP/self-managed TLS setups). Retry once.
+        if (account.imapTls && account.imapPort === 993 && isImapGreetingTimeout(err)) {
+          const retryAccount: MailcowAccount = {
+            ...account,
+            imapPort: 143,
+            imapTls: false,
+          };
+          const retryImap = new ImapService(retryAccount);
+          await retryImap.verifyCredentials(password.trim());
+          account.imapPort = 143;
+          account.imapTls = false;
+        } else {
+          throw err;
+        }
+      }
       console.log(`[Login:${loginAttemptId}] IMAP credentials verified`, {
         elapsedMs: Date.now() - startedAt,
       });
