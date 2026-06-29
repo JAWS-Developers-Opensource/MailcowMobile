@@ -19,6 +19,7 @@
     "package": "com.jawsdevelopers.mailcowmobile"
   },
   "plugins": [
+    "expo-dev-client",
     "expo-router",
     "expo-secure-store",
     "react-native-tcp-socket",

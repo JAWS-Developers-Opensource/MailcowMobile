@@ -9,16 +9,16 @@ A mobile email / calendar / tasks / contacts client for [Mailcow](https://mailco
 
 | Feature | Status |
 |---------|--------|
-| 📧 Email — read (IMAP) | 🟡 UI + mock service |
-| 📧 Email — send (SMTP) | 🟡 UI + mock service |
-| 📧 Folders, reply, forward, delete | 🟡 UI complete |
-| 📅 Calendar (CalDAV) | 🟡 UI + mock service |
-| ✅ Tasks (CalDAV / VTODO) | 🟡 UI + mock service |
-| 👥 Contacts (CardDAV) | 🟡 UI + mock service |
-| 🔐 Login / credential storage | 🟡 UI complete |
+| 📧 Email — read (IMAP) | 🟢 Real server connectivity |
+| 📧 Email — send (SMTP) | 🟢 Real server connectivity |
+| 📧 Folders, reply, forward, delete, drafts | 🟢 Real server connectivity |
+| 📅 Calendar (CalDAV) | 🟢 Real server connectivity |
+| ✅ Tasks (CalDAV / VTODO) | 🟢 Real server connectivity |
+| 👥 Contacts (CardDAV) | 🟢 Real server connectivity |
+| 🔐 Login / credential storage | 🟢 IMAP-validated login |
 | ⚙️ Settings | 🟡 UI complete |
 
-> 🟡 = UI is built; real network protocol is stubbed and ready to implement.
+> 🟢 = Feature is connected directly to the user's Mailcow server (no backend proxy).
 
 ## Quick start (development)
 
@@ -27,13 +27,16 @@ A mobile email / calendar / tasks / contacts client for [Mailcow](https://mailco
 - [Node.js](https://nodejs.org/) ≥ 20
 - [Expo CLI](https://docs.expo.dev/get-started/installation/)
 - [Android Studio](https://developer.android.com/studio) and/or Xcode (for native simulators)
+- Custom Expo Dev Client or production build (required for native socket modules)
 
 ```bash
 npm install
-npx expo start
+npx expo prebuild
+npx expo run:android   # or: npx expo run:ios
+npm run start:dev-client
 ```
 
-Then scan the QR code with the [Expo Go](https://expo.dev/go) app, or press `a` for Android / `i` for iOS simulator.
+> `react-native-tcp-socket` (used for IMAP/SMTP) is a native module and does not run in Expo Go.
 
 ## Building for distribution (EAS Build)
 
@@ -78,7 +81,7 @@ constants/Colors.ts       ← Light/dark theme colours
 
 - **Expo Router** (file-based routing, similar to Next.js but for React Native)
 - **Zustand** for lightweight state management
-- **Service layer** (`services/`) provides the API contract for IMAP, SMTP, CalDAV, and CardDAV. Current implementations return mock data; replace with native socket modules or proxy API calls.
+- **Service layer** (`services/`) performs direct IMAP / SMTP / CalDAV / CardDAV operations against the user's Mailcow server.
 - **No hard-coded credentials** — passwords are stored via `expo-secure-store`
 
 ## Testing
