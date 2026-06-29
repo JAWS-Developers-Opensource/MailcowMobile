@@ -1,0 +1,35 @@
+{
+  "name": "mailcow-mobile",
+  "slug": "mailcow-mobile",
+  "version": "0.0.1",
+  "orientation": "portrait",
+  "icon": "./assets/logo.png",
+  "scheme": "mailcowmobile",
+  "userInterfaceStyle": "automatic",
+  "ios": {
+    "supportsTablet": true,
+    "bundleIdentifier": "com.jawsdevelopers.mailcowmobile"
+  },
+  "android": {
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/logo.png",
+      "backgroundColor": "#0D1B2A"
+    },
+    "package": "com.jawsdevelopers.mailcowmobile"
+  },
+  "plugins": [
+    "expo-dev-client",
+    "expo-router",
+    "expo-secure-store",
+    [
+      "expo-notifications",
+      {
+        "icon": "./assets/logo.png",
+        "color": "#2563EB"
+      }
+    ]
+  ],
+  "experiments": {
+    "typedRoutes": true
+  }
+}
