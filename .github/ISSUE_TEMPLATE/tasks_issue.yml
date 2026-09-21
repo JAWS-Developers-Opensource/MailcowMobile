@@ -1,0 +1,81 @@
+name: ✅ Tasks Issue
+description: Report a problem with tasks loading, creating, editing, or deleting via CalDAV/VTODO
+title: "[Tasks]: "
+labels: ["tasks", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues related to the Tasks section (CalDAV VTODO), including task list management, task CRUD, and syncing.
+
+  - type: dropdown
+    id: tasks_area
+    attributes:
+      label: Tasks Sub-area
+      options:
+        - CalDAV connection (VTODO)
+        - Task list / folder
+        - Loading tasks
+        - Create task
+        - Edit task
+        - Delete task
+        - Mark task as complete
+        - Due date / reminder
+        - Task priority
+    validations:
+      required: true
+
+  - type: input
+    id: caldav_host
+    attributes:
+      label: CalDAV Server Host
+      description: The hostname of your server (e.g. `mail.example.com`). Do NOT include credentials.
+      placeholder: "mail.example.com"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Issue
+      placeholder: "When I mark a task as complete, it still appears in the active tasks list …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Navigate to Tasks
+        2. Tap 'New Task'
+        3. Fill in title and due date
+        4. Tap 'Save'
+        5. Task does not appear
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Metro / Device Errors
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional Context
